@@ -41,6 +41,16 @@ export default function Task() {
   const [loading, setLoading] = React.useState(true);
   const [mikeTaskRecord, setMikeTaskRecord] = React.useState({});
 const [openDialog, setOpenDialog] = React.useState(false);
+const [uploading, setUploading] = React.useState(false);
+const [range, setRange] = React.useState({
+  startMonth: new Date().getMonth(),
+  startYear: new Date().getFullYear(),
+  endMonth: new Date().getMonth(),
+  endYear: new Date().getFullYear(),
+});
+
+
+
 const tableRef = useRef(null);
 const handleOpenDialog = () => {
   setOpenDialog(true);
@@ -140,6 +150,107 @@ console.log("object111", timeRecordsData);
   pdf.save(`Time_Records_${currentMonthName}.pdf`);
 };
 
+
+const generatePDF = async () => {
+  const input = tableRef.current;
+  if (!input) return null;
+
+  const canvas = await html2canvas(input, {
+    scale: 2,
+    scrollY: -window.scrollY,
+  });
+
+  const imgData = canvas.toDataURL("image/png");
+
+  const pdf = new jsPDF("p", "mm", "a4");
+  const pdfWidth = pdf.internal.pageSize.getWidth();
+  const pdfHeight = pdf.internal.pageSize.getHeight();
+
+  const imgProps = pdf.getImageProperties(imgData);
+  const imgHeight = (imgProps.height * pdfWidth) / imgProps.width;
+  const heightToUse = imgHeight > pdfHeight ? pdfHeight : imgHeight;
+
+  pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, heightToUse);
+
+  return pdf.output("blob");
+};
+const handleAttachPDF = async () => {
+  setUploading(true); // Start loader
+
+  const blob = await generatePDF();
+  if (!blob || !entity || !entityID) {
+    setUploading(false);
+    return;
+  }
+
+  const file = {
+    Name: `Time_Records_${currentMonthName}.pdf`,
+    Content: blob,
+  };
+
+  try {
+    const response = await ZOHO.CRM.API.attachFile({
+      Entity: entity,
+      RecordID: entityID,
+      File: file,
+    });
+
+    console.log("File attached:", response);
+
+    // ✅ Step 1: Check if attachment was successful
+    const successCode = response?.data?.[0]?.code;
+    if (successCode === "SUCCESS") {
+      const func_name = "send_mail_with_attachment";
+      const req_data = {
+        arguments: JSON.stringify({
+          task_id: entityID,
+        }),
+      };
+
+      // ✅ Step 2: Execute custom function
+      ZOHO.CRM.FUNCTIONS.execute(func_name, req_data)
+        .then((funcResponse) => {
+          console.log("Function executed:", funcResponse);
+
+          // ✅ Step 3: Check if function execution was successful
+          if (funcResponse?.code === "success") {
+            ZOHO.CRM.UI.Popup.closeReload().then((data) => {
+              console.log("Popup closed and reloaded:", data);
+            });
+          } else {
+            alert("Attachment uploaded, but email function failed.");
+            handleOpenDialog();
+          }
+        })
+        .catch((error) => {
+          console.error("Function execution error:", error);
+          alert("Attachment uploaded, but email function failed.");
+          handleOpenDialog();
+        });
+    } else {
+      alert("Attachment failed. Please try again.");
+    }
+  } catch (error) {
+    console.error("Error attaching PDF:", error);
+    alert("Failed to attach the PDF.");
+  } finally {
+    setUploading(false); // Stop loader
+  }
+};
+
+
+const filteredTimeRecords = timeRecordsData.filter((record) => {
+  const start = new Date(record?.Start_Zeit);
+  const startDate = new Date(range.startYear, range.startMonth, 1);
+  const endDate = new Date(range.endYear, range.endMonth + 1, 0); // end of selected month
+
+  return start >= startDate && start <= endDate;
+});
+
+
+
+
+
 return (
   <Box sx={{ pl: 5, pr: 5, pt: 4 }}>
    
@@ -155,13 +266,78 @@ return (
     <Typography align="left">
       <span style={{ fontWeight: 600 }}>Company Name: </span>{mikeTaskRecord?.Company_Name}
     </Typography>
-    <Typography align="left">
+    {/* <Typography align="left">
       <span style={{ fontWeight: 600 }}>Task Name: </span>{mikeTaskRecord?.Name}
-    </Typography>
-    <Typography align="left">
-      <span style={{ fontWeight: 600 }}>Month: </span>
-      <span style={{ fontWeight: 300 }}>{currentMonthName}</span>
-    </Typography>
+    </Typography> */}
+    <Box sx={{ display: "flex", gap: 4, alignItems: "center", mb: 2 }}>
+  {/* Start Date */}
+  <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+    <Typography fontWeight={600}>From:</Typography>
+    <select
+      value={range.startMonth}
+      onChange={(e) =>
+        setRange({ ...range, startMonth: parseInt(e.target.value) })
+      }
+    >
+      {Array.from({ length: 12 }, (_, i) => (
+        <option key={i} value={i}>
+          {new Date(0, i).toLocaleString("default", { month: "long" })}
+        </option>
+      ))}
+    </select>
+
+    <select
+      value={range.startYear}
+      onChange={(e) =>
+        setRange({ ...range, startYear: parseInt(e.target.value) })
+      }
+    >
+      {Array.from({ length: 10 }, (_, i) => {
+        const year = new Date().getFullYear() - i;
+        return (
+          <option key={year} value={year}>
+            {year}
+          </option>
+        );
+      })}
+    </select>
+  </Box>
+
+  {/* End Date */}
+  <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+    <Typography fontWeight={600}>To:</Typography>
+    <select
+      value={range.endMonth}
+      onChange={(e) =>
+        setRange({ ...range, endMonth: parseInt(e.target.value) })
+      }
+    >
+      {Array.from({ length: 12 }, (_, i) => (
+        <option key={i} value={i}>
+          {new Date(0, i).toLocaleString("default", { month: "long" })}
+        </option>
+      ))}
+    </select>
+
+    <select
+      value={range.endYear}
+      onChange={(e) =>
+        setRange({ ...range, endYear: parseInt(e.target.value) })
+      }
+    >
+      {Array.from({ length: 10 }, (_, i) => {
+        const year = new Date().getFullYear() - i;
+        return (
+          <option key={year} value={year}>
+            {year}
+          </option>
+        );
+      })}
+    </select>
+  </Box>
+</Box>
+
+
   </Box>
 
   <Button variant="outlined" size="small" onClick={handleDownloadPDF}>
@@ -188,8 +364,9 @@ return (
                 <StyledTableCell align="right">Countable Time</StyledTableCell>
               </TableRow>
             </TableHead>
+            
             <TableBody>
-              {timeRecordsData.map((row) => (
+              {filteredTimeRecords.map((row) => (
                 <StyledTableRow key={row.name}>
                   <StyledTableCell component="th" scope="row" size="small">
                     {row?.Name}
@@ -247,7 +424,7 @@ return (
                 <StyledTableCell colSpan={9} />
                 <StyledTableCell align="right" sx={{ fontWeight: "bold" }}>
                   {(() => {
-                    const totalMs = timeRecordsData.reduce((acc, row) => {
+                    const totalMs = filteredTimeRecords.reduce((acc, row) => {
                       const start = new Date(row.Start_Zeit);
                       const end = new Date(row.End_Zeit);
                       return acc + (end - start);
@@ -266,9 +443,16 @@ return (
         </TableContainer>
 
         <Box sx={{ mt: 8 }} align="center">
-          <Button onClick={handleOpenDialog}  variant="contained" size="small">
-            Send Email
-          </Button>
+          <Button
+  onClick={handleAttachPDF}
+  variant="contained"
+  size="small"
+  disabled={uploading}
+  startIcon={uploading && <CircularProgress size={16} />}
+>
+  {uploading ? "Sending..." : "Send Email"}
+</Button>
+
         </Box>
         <Dialog
   open={openDialog}
