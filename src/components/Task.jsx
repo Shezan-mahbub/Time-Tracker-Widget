@@ -124,9 +124,12 @@ export default function Task() {
     fetchTaskRecord();
   }, [initialized, entityID]);
   console.log("object", mikeTaskRecord);
-  const currentMonthName = new Date().toLocaleString("default", {
-    month: "long",
-  });
+  const selectedEndMonthName = new Date(0, range.endMonth).toLocaleString(
+    "default",
+    {
+      month: "long",
+    }
+  );
 
   const handleDownloadPDF = async () => {
     const input = tableRef.current;
@@ -150,7 +153,7 @@ export default function Task() {
     const heightToUse = imgHeight > pdfHeight ? pdfHeight : imgHeight;
 
     pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, heightToUse);
-    pdf.save(`Time_Records_${currentMonthName}.pdf`);
+    pdf.save(`Time_Records_${selectedEndMonthName}.pdf`);
   };
 
   const generatePDF = async () => {
@@ -189,7 +192,7 @@ export default function Task() {
     }
 
     const file = {
-      Name: `Time_Records_${currentMonthName}.pdf`,
+      Name: `Time_Records_${selectedEndMonthName}.pdf`,
       Content: blob,
     };
 
