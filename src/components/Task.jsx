@@ -402,7 +402,7 @@ export default function Task() {
                       {mikeTaskRecord?.Owner?.name}
                     </StyledTableCell>
                     <StyledTableCell align="right" size="small">
-                      {mikeTaskRecord?.Task_Priority}
+                      {mikeTaskRecord?.Priorit_t}
                     </StyledTableCell>
                     <StyledTableCell align="right" size="small">
                       {mikeTaskRecord?.Status}
