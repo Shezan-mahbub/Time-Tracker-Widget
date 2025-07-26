@@ -273,10 +273,10 @@ export default function Task() {
             }}
           >
             <Box>
-              <Typography align="left">
+{/*               <Typography align="left">
                 <span style={{ fontWeight: 600 }}>Company Name: </span>
                 {mikeTaskRecord?.Company_Name}
-              </Typography>
+              </Typography> */}
               {/* <Typography align="left">
       <span style={{ fontWeight: 600 }}>Task Name: </span>{mikeTaskRecord?.Name}
     </Typography> */}
