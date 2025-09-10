@@ -1,12 +1,12 @@
 import "./App.css";
-import Meeting from "./components/Meeting";
+import Main from "./components/Main";
 import Task from "./components/Task";
 
 function App() {
   return (
     <div className="App">
-      {/* <Meeting/> */}
-      <Task />
+      {/* <Task /> */}
+      <Main/>
     </div>
   );
 }
