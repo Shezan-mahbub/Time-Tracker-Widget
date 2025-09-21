@@ -65,7 +65,7 @@ export default function Task() {
       Bemerkungen: "",
       Business_Area: "",
       Business_Area1: [],
-      Aufgaben_ID:entityID
+
     });
 console.log("object_formData",formData);
   const tableRef = useRef(null);
@@ -77,69 +77,87 @@ console.log("object_formData",formData);
     setOpenDialog(false);
   };
 
-  React.useEffect(() => {
-    ZOHO.embeddedApp.on("PageLoad", function (data) {
-      setInitialized(true);
-      setEntity(data?.Entity);
-      setEntityID(data?.EntityId);
-      ZOHO.CRM.UI.Resize({ height: "90%", width: "70%" });
-    });
+function parseTimeRecords(resp) {
+  const raw = resp?.details?.output;
+  if (!raw) return [];
 
-    ZOHO.embeddedApp.init();
-  }, []);
-  //   console.log("object", entity);
+  // Ensure we have a string and wrap as an array if it's a series of objects
+  let str = typeof raw === "string" ? raw.trim() : JSON.stringify(raw);
+  if (!str.startsWith("[")) str = `[${str}]`;
 
-  React.useEffect(() => {
-    if (initialized) {
-      const fetchData = async () => {
-        try {
-          const timeRecords = await ZOHO.CRM.API.getRelatedRecords({
-            Entity: "TasksMike",
-            RecordID: entityID,
-            RelatedList: "Zeiterfassungen",
-            page: 1,
-            per_page: 200,
-          });
+  try {
+    const parsed = JSON.parse(str);
+    return Array.isArray(parsed) ? parsed : [parsed];
+  } catch (err) {
+    console.error("Failed to parse resp_func_1.details.output:", err);
+    return [];
+  }
+}
 
-          setTimeRecordsData(timeRecords?.data || []);
-        } catch (error) {
-          console.error("Error fetching deal data:", error);
-          setTimeRecordsData([]); // fallback
-        } finally {
-          setLoading(false);
-        }
-      };
+React.useEffect(() => {
+  ZOHO.embeddedApp.on("PageLoad", async function (data) {
+    try {
+      const recordUniqueId = data?.EntityId?.[0];
+      console.log("object", recordUniqueId);
 
-      fetchData();
-    }
-  }, [initialized, entity, entityID]);
-
-  console.log("object111", timeRecordsData);
-
-  React.useEffect(() => {
-    if (!initialized || !entityID) return;
-
-    const fetchTaskRecord = async () => {
-      try {
-        const taskResponse = await ZOHO.CRM.API.getRecord({
-          Entity: "TasksMike",
-          RecordID: entityID,
-        });
-
-        setMikeTaskRecord(taskResponse?.data?.[0] || []);
-      } catch (error) {
-        console.error("Error fetching TasksMike record:", error);
-        setMikeTaskRecord([]); // fallback
+      if (!recordUniqueId) {
+        throw new Error("EntityId is not available");
       }
-    };
+setEntityID([recordUniqueId]);
+ZOHO.CRM.API.getRecord({
+ Entity: "Tasks", approved: "both", RecordID:recordUniqueId
+})
+.then(function(data){
+    console.log("ererer",data);
+    setMikeTaskRecord(data?.data[0])
+})
+      const resp_func_1 = await ZOHO.CRM.FUNCTIONS.execute(
+        "getting_all_time_records_related_to_task",
+        {
+          task_id: recordUniqueId,
+        }
+      );
 
-    fetchTaskRecord();
-  }, [initialized, entityID]);
-  console.log("object", mikeTaskRecord);
+      // Log the raw output to check the structure
+      console.log("Raw API Response Output:", resp_func_1);
+
+      // Process the records to get only the needed fields
+      const processedRecords = parseTimeRecords(resp_func_1);
+
+      console.log("Processed Records:", processedRecords);
+
+      // Set the processed data into the state
+      setTimeRecordsData(processedRecords);
+    } catch (err) {
+      console.error("Error in PageLoad flow:", err);
+      setTimeRecordsData([]); // Reset to an empty array in case of error
+    } finally {
+      setLoading(false); // Finish loading process
+    }
+  });
+
+  ZOHO.embeddedApp.init().then(() => {
+    ZOHO.CRM.UI.Resize({ height: "80%", width: "85%" });
+  });
+}, []);
+
+React.useEffect(() => {
+  if (entityID) {
+    setFormData((prevData) => ({
+      ...prevData,
+      Aufgaben_ID: entityID[0] || "", // Set Aufgaben_ID only when entityID is available
+    }));
+  }
+}, [entityID]);
+
+
+
+
+  console.log("111122322",timeRecordsData);
 
     const Create_new_time_record = async () => {
     setLoading(true);
-    const func_name = "route_1008";
+    console.log("object6767",formData);
     await ZOHO.CRM.API.insertRecord({Entity:"Zeiterfassungen",APIData:formData,Trigger:["workflow"]}).then(function(data){
 	console.log("new Data set",data);
 	}).then(async function (resp_func) {
@@ -290,6 +308,8 @@ console.log("object_formData",formData);
 
     return start >= startDate && start <= endDate;
   });
+
+  console.log("filteredTimeRecords",filteredTimeRecords);
 
 return (
   <Box p={4}>
@@ -465,7 +485,7 @@ return (
                           {mikeTaskRecord?.Owner?.name}
                         </StyledTableCell>
                         <StyledTableCell align="right">
-                          {mikeTaskRecord?.Priorit_t}
+                          {mikeTaskRecord?.Priority}
                         </StyledTableCell>
                         <StyledTableCell align="right">
                           {mikeTaskRecord?.Status}
@@ -580,7 +600,7 @@ return (
       </>
     ) : (
       // --- Main UI ---
-      <Main setFormData={setFormData} formData={formData} Create_new_time_record={Create_new_time_record}/>
+      <Main setShowMain={setShowMain} setFormData={setFormData} formData={formData} Create_new_time_record={Create_new_time_record}/>
     )}
   </Box>
 );
