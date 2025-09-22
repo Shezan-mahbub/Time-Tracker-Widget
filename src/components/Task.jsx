@@ -63,7 +63,6 @@ export default function Task() {
       End_Zeit: null,
       Dauer: null,
       Bemerkungen: "",
-      Business_Area: "",
       Business_Area1: [],
 
     });

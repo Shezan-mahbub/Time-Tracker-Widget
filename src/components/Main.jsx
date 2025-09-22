@@ -126,14 +126,7 @@ export default function Main({ setFormData, formData, Create_new_time_record, se
                       },
                     }}
                   />
-                  <TextField
-                    fullWidth
-                    size="small"
-                    type="number"
-                    label="Dauer"
-                    value={formData.Dauer}
-                    onChange={(e) => setField("Dauer", e.target.value)}
-                  />
+                 
 
                   <FormControl fullWidth size="small">
                     <Select
@@ -191,12 +184,13 @@ export default function Main({ setFormData, formData, Create_new_time_record, se
                       },
                     }}
                   />
-                  <TextField
+                 <TextField
                     fullWidth
                     size="small"
-                    label="Business Area"
-                    value={formData.Business_Area}
-                    onChange={(e) => setField("Business_Area", e.target.value)}
+                    type="number"
+                    label="Dauer"
+                    value={formData.Dauer}
+                    onChange={(e) => setField("Dauer", e.target.value)}
                   />
 
                   <FormControl fullWidth size="small">
